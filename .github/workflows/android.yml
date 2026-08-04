@@ -5,7 +5,7 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-  # 添加手动触发选项（可选）
+  # 添加手动触发选项
   workflow_dispatch:
 
 jobs:
@@ -30,26 +30,14 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleDebug
     
-    # 构建Release APK（如果需要）
+    # 构建Release APK
     - name: Build Release APK
       run: ./gradlew assembleRelease
     
-    # 上传APK作为构建产物
+    # 上传APK作为构建产物（仅作为工作流artifact保留）
     - name: Upload APK artifacts
       uses: actions/upload-artifact@v4
       with:
         name: app-apks
         path: liveBootAni2/build/outputs/apk/**/*.apk
-    
-    # 自动发布到GitHub Releases
-    - name: Create Release and Upload APK
-      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: v${{ github.run_number }}
-        name: Release v${{ github.run_number }}
-        files: liveBootAni2/build/outputs/apk/release/*.apk
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        retention-days: 30  # 可选：设置artifact保留天数，默认90天
