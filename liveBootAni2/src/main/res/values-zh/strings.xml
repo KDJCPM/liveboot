@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LiveBoot</string>
+    <string name="app_details">版权所有 © 2011-2024 – Chainfire\nTwitter: @ChainfireXDA\n点击访问 XDA 论坛帖子</string>
+    <string name="app_website_url">http://forum.xda-developers.com/android/apps-games/liveboot-t2976189</string>
+    
+    <string name="generic_ok">确定</string>
+    <string name="generic_cancel">取消</string>
+    <string name="generic_save">保存</string>
+    <string name="generic_yes">是</string>
+    <string name="generic_no">否</string>
+    <string name="generic_close">关闭</string>
+    <string name="generic_clear">清除</string>
+    <string name="generic_install">安装</string>
+    <string name="generic_uninstall">卸载</string>
+    <string name="generic_all">全部</string> 
+    <string name="generic_none">无</string> 
+    
+    <string name="loading">加载中 …</string>
+    <string name="installing">安装中 …</string>
+    <string name="uninstalling">卸载中 …</string>
+    <string name="rebooting">重启中 …\n\n如果此消息持续显示超过一分钟，请手动重启！</string>
+    
+    <string name="error_not_rooted">无法获取 root 权限。强烈建议使用 SuperSU v2.40 或更新版本来获取 root 权限。</string>
+    <string name="error_supersu_old">您正在运行旧版本的 SuperSU，请更新到 SuperSU v2.40 或更新版本。</string>
+    <string name="error_no_supersu_nor_initd">您已获取 root 权限，但您没有运行 SuperSU v2.40 或更新版本，也没有运行支持的 Magisk 版本，并且您的固件不支持 init.d。必须满足其中一项！</string>
+    <string name="warning_initd">您没有运行 SuperSU v2.40 或更新版本，但您的固件支持 init.d。此应用将尝试使用 init.d 来执行操作，但此方式不受官方支持。如果无法正常工作，请将您的 root 升级到 SuperSU v2.40 或更新版本。</string>
+    <string name="error_install_needed">需要安装或更新 /system 分区上的启动脚本。现在安装？</string>
+    <string name="error_install_nospace">我们需要安装到 /system，但 /system 分区上没有足够的可用空间（需要 1 MB）。这是一个问题！</string>
+    <string name="error_uninstall">选择正常卸载还是通过自定义恢复卸载？如果您不确定，请选择<i>正常</i>。</string>
+    
+    <string name="settings_category_market">Chainfire</string>
+    <string name="settings_market">我的所有应用</string>
+    <string name="settings_market_description">在 Google Play 上查看我所有的应用</string>
+    <string name="follow_pref_title">在 Twitter 上关注我</string>
+    <string name="follow_pref_desc">随时了解我的开发动态</string>
+    <string name="follow_popup_title">关注我</string>
+    <string name="follow_popup_desc">随时了解我的开发动态，在 Twitter 上关注我</string>
+    <string name="follow_twitter">Twitter</string>
+    <string name="follow_nothanks">不用了，谢谢</string>    
+    
+    <string name="settings_category_logcat">Logcat</string>
+    <string name="settings_logcat_levels_title">级别</string>
+    <string name="settings_logcat_levels_description">选择要显示的 logcat 级别</string>
+    <string name="settings_logcat_buffers_title">缓冲区</string>
+    <string name="settings_logcat_buffers_description">选择要显示的 logcat 缓冲区</string>
+    <string name="settings_logcat_format_title">格式</string>
+    <string name="settings_logcat_format_description">logcat 输出的格式</string>
+    <string name="settings_logcat_colors_title">颜色</string>
+    <string name="settings_logcat_colors_description">为 logcat 输出添加颜色</string>
+    
+    <string name="settings_category_dmesg">Dmesg</string>
+    <string name="settings_dmesg_title">启用</string>
+    <string name="settings_dmesg_description">显示内核消息日志</string>
+    
+    <string name="settings_category_settings">选项</string>
+    <string name="settings_transparent_title">透明</string>
+    <string name="settings_transparent_description">将 logcat 和 dmesg 叠加在默认开机动画之上</string>
+    <string name="settings_dark_title">深色背景</string>
+    <string name="settings_dark_description">使用比默认设置更深的背景</string>
+    <string name="settings_lines_title">行数</string>
+    <string name="settings_lines_description">屏幕适配的行数</string>
+    <string name="settings_wordwrap_title">自动换行</string>
+    <string name="settings_wordwrap_description">如果一行内容无法在屏幕上完整显示，则将其拆分为多行</string>
+    
+    <string name="settings_category_misc">其他</string>
+    <string name="settings_test_title">测试运行</string>
+    <string name="settings_test_description">5 秒测试运行。如果显示 logcat 输出，则不显示 dmesg 输出。屏幕填充效果取决于当前方向。测试期间请勿点击屏幕。</string>
+    <string name="settings_uninstall_title">卸载</string>
+    <string name="settings_uninstall_description">从设备中移除启动脚本。不会卸载本应用。</string>
+    <string name="settings_reboot_title">重启</string>
+    <string name="settings_reboot_description">重启设备</string>
+    <string name="settings_reboot_confirm">您确定要重启吗？</string>
+    <string name="settings_save_logs_title">保存日志</string>
+    <string name="settings_save_logs_description">将输出保存到 /cache/liveboot.log。会减慢启动速度，仅在需要时使用。</string>
+    
+    <string name="logcat_level_verbose">详细</string>
+    <string name="logcat_level_debug">调试</string>
+    <string name="logcat_level_info">信息</string>
+    <string name="logcat_level_warning">警告</string>
+    <string name="logcat_level_error">错误</string>
+    <string name="logcat_level_fatal">严重</string>
+    <string name="logcat_level_silent">静默</string>
+
+    <string name="logcat_buffer_main">主</string>
+    <string name="logcat_buffer_system">系统</string>
+    <string name="logcat_buffer_radio">无线</string>
+    <string name="logcat_buffer_events">事件</string>
+    <string name="logcat_buffer_crash">崩溃</string>
+
+    <string name="logcat_format_brief">简要</string>
+    <string name="logcat_format_process">进程</string>
+    <string name="logcat_format_tag">标签</string>
+    <string name="logcat_format_thread">线程</string>
+    <string name="logcat_format_time">时间</string>
+    <string name="logcat_format_threadtime">线程时间</string>
+
+    <string name="settings_donate_title">升级到专业版</string>
+    <string name="settings_donate_description">支持开发，解锁功能</string>
+    
+    <string name="pro_required">此功能需要专业版</string>
+    <string name="root_required">此功能需要 root 权限</string>
+    <string name="error_root_required_2024">无法获取 root 权限。部分功能需要 root 权限，因此将不可用。</string>
+
+    <string name="settings_freeload_title">免费加载</string>
+    <string name="settings_freeload_description">在不实际购买专业版的情况下启用专业版功能</string>
+        
+</resources>
