@@ -1,0 +1,40 @@
+name: 打包并上传Git工作流容器
+
+on:
+  workflow_dispatch:  # 仅允许手动触发
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+    # 检出仓库代码到工作流容器
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    # 可选的步骤：安装依赖或执行其他操作
+    # 此处预留，您可以根据需要添加
+
+    # 打包整个工作流容器（Git工作区）
+    - name: 打包工作流容器
+      run: |
+        # 设置打包文件名，包含时间戳以避免冲突
+        TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+        ARCHIVE_NAME="workflow-container-$TIMESTAMP.tar.gz"
+        echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
+        
+        # 打包当前工作目录（即Git工作流容器中的工作区）
+        # --exclude-vcs 可排除 .git 目录（如果需要包含 .git，请移除该选项）
+        # --exclude 排除自身生成的压缩包，防止递归打包
+        tar -czf "$ARCHIVE_NAME" \
+            --exclude="$ARCHIVE_NAME" \
+            --exclude-vcs \
+            .
+
+    # 上传生成的压缩包作为工作流产物
+    - name: 上传压缩包
+      uses: actions/upload-artifact@v4
+      with:
+        name: git-workflow-container
+        path: ${{ env.ARCHIVE_NAME }}
+        retention-days: 7  # 保留天数（默认90天，根据需求调整）
