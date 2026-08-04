@@ -5,6 +5,7 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  # 添加手动触发选项（可选）
   workflow_dispatch:
 
 jobs:
@@ -25,36 +26,20 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     
-    # 先检查项目结构
-    - name: List project structure
-      run: |
-        ls -la
-        ls -la app/ || echo "app目录不存在"
-        ls -la app/src/ || echo "src目录不存在"
-    
-    # 构建Debug APK - 使用正确的gradle任务
+    # 构建Debug APK
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --stacktrace
+      run: ./gradlew assembleDebug
     
-    # 构建Release APK
+    # 构建Release APK（如果需要）
     - name: Build Release APK
-      run: ./gradlew assembleRelease --stacktrace
-    
-    # 检查生成的APK文件
-    - name: Check APK files
-      run: |
-        find . -name "*.apk" -type f
-        ls -la app/build/outputs/apk/ || echo "APK目录不存在"
+      run: ./gradlew assembleRelease
     
     # 上传APK作为构建产物
     - name: Upload APK artifacts
       uses: actions/upload-artifact@v4
       with:
         name: app-apks
-        path: |
-          app/build/outputs/apk/debug/*.apk
-          app/build/outputs/apk/release/*.apk
-        if-no-files-found: warn
+        path: liveBootAni2/build/outputs/apk/**/*.apk
     
     # 自动发布到GitHub Releases
     - name: Create Release and Upload APK
@@ -63,9 +48,7 @@ jobs:
       with:
         tag_name: v${{ github.run_number }}
         name: Release v${{ github.run_number }}
-        files: |
-          app/build/outputs/apk/release/*.apk
-          app/build/outputs/apk/debug/*.apk
+        files: liveBootAni2/build/outputs/apk/release/*.apk
         draft: false
         prerelease: false
       env:
