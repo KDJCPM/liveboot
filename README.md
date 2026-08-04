@@ -1,3 +1,17 @@
+
+# LiveBoot - Modified Edition
+
+**⚠️ NOT OFFICIAL - This is a modified fork of Chainfire's LiveBoot**
+
+**Modifications:**
+- Removed Pro version restrictions (3 lines changed in SettingsFragment.java)
+- All features enabled without purchase
+
+**Original:** https://github.com/Chainfire/liveboot  
+**License:** GPLv3 (see LICENSE file)
+
+
+
 This is the sauce for the [LiveBoot](https://play.google.com/store/apps/details?id=eu.chainfire.liveboot) app.
 
 ## License
