@@ -1,0 +1,12 @@
+name: Check Architecture
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  check-arch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check container architecture
+        run: uname -m
