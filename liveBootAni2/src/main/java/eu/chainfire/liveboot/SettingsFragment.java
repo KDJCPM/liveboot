@@ -61,8 +61,8 @@ public class SettingsFragment extends PreferenceFragment implements OnSharedPref
     private ListPreference prefLines = null;   
     
     private InAppPurchases iap = null;
-    private volatile boolean pro = false;
-    private volatile boolean proReal = false;
+    private volatile boolean pro = true;
+    private volatile boolean proReal = true;
     
     private Installer.Mode mode = Mode.SU_D;
 
@@ -297,7 +297,7 @@ public class SettingsFragment extends PreferenceFragment implements OnSharedPref
                 proReal = true;
             }
             
-            pro = proReal;
+            pro = true;
             if (!pro) {
                 if (settings.FREELOAD.get()) {
                     pro = true;
