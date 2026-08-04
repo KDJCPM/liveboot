@@ -13,7 +13,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
+/*
+ * MODIFIED VERSION - Changes made on 2026-08-04:
+ * - Line 64: pro variable forced to true (removed Pro restriction)
+ * - Line 65: proReal variable forced to true (removed Pro restriction)  
+ * - Line 297: proReal set to true in else branch (removed Pro restriction)
+ * For educational purposes only. Support the original developer.
+ */
 package eu.chainfire.liveboot;
 
 import android.app.Activity;
