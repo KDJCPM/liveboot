@@ -1,4 +1,4 @@
-name: Check Architecture
+name: 系统架构检查
 
 on:
   push:
@@ -8,148 +8,36 @@ jobs:
   check-arch:
     runs-on: ubuntu-24.04-arm
     steps:
-      - name: 系统架构检查
+      - name: 检查系统信息
         run: |
-          echo "🖥️  系统架构: $(uname -m)"
-          echo "🏷️  硬件平台: $(uname -i)"
-
-      - name: CPU详细信息
-        run: |
-          echo "========================================="
-          echo "          CPU 配置信息"
-          echo "========================================="
-          echo "📌 CPU型号: $(lscpu | grep 'Model name' | awk -F: '{print $2}' | xargs)"
-          echo "📌 CPU核心数: $(nproc)"
-          echo "📌 线程数: $(lscpu | grep 'Thread(s) per core' | awk -F: '{print $2}' | xargs)"
-          echo "📌 CPU最大频率: $(lscpu | grep 'CPU max MHz' | awk -F: '{print $2}' | xargs) MHz"
-          echo "📌 CPU最小频率: $(lscpu | grep 'CPU min MHz' | awk -F: '{print $2}' | xargs) MHz"
-          echo "📌 架构类型: $(lscpu | grep 'Architecture' | awk -F: '{print $2}' | xargs)"
-          echo "📌 字节序: $(lscpu | grep 'Byte Order' | awk -F: '{print $2}' | xargs)"
-          echo "========================================="
-
-      - name: 内存详细信息
-        run: |
-          echo "========================================="
-          echo "          内存配置信息"
-          echo "========================================="
-          TOTAL_MEM=$(free -h | grep Mem | awk '{print $2}')
-          USED_MEM=$(free -h | grep Mem | awk '{print $3}')
-          FREE_MEM=$(free -h | grep Mem | awk '{print $4}')
-          AVAIL_MEM=$(free -h | grep Mem | awk '{print $7}')
-          SWAP_TOTAL=$(free -h | grep Swap | awk '{print $2}')
-          SWAP_USED=$(free -h | grep Swap | awk '{print $3}')
-          SWAP_FREE=$(free -h | grep Swap | awk '{print $4}')
+          echo "=== 系统信息 ==="
+          echo "架构: $(uname -m)"
+          echo "内核: $(uname -r)"
+          echo "系统: $(lsb_release -ds 2>/dev/null || cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d '"')"
+          echo ""
           
-          echo "📌 总内存: $TOTAL_MEM"
-          echo "📌 已用内存: $USED_MEM"
-          echo "📌 空闲内存: $FREE_MEM"
-          echo "📌 可用内存: $AVAIL_MEM"
-          echo "📌 Swap总量: $SWAP_TOTAL"
-          echo "📌 Swap已用: $SWAP_USED"
-          echo "📌 Swap空闲: $SWAP_FREE"
-          echo "========================================="
-
-      - name: 存储空间检查
-        run: |
-          echo "========================================="
-          echo "          存储空间信息"
-          echo "========================================="
-          df -h --total | grep -v "tmpfs" | grep -v "snap" | while read line; do
-            if [[ $line == Filesystem* ]]; then
-              echo "📁 文件系统   容量  已用  可用  使用%  挂载点"
-            else
-              echo "$line" | awk '{printf "📁 %-10s %-6s %-6s %-6s %-5s %-10s\n", $1, $2, $3, $4, $5, $6}'
-            fi
-          done
+          echo "=== CPU ==="
+          echo "型号: $(lscpu | grep 'Model name' | awk -F: '{print $2}' | xargs)"
+          echo "核心数: $(nproc)"
+          echo "线程数: $(lscpu | grep 'Thread(s) per core' | awk -F: '{print $2}' | xargs)"
           echo ""
-          echo "📊 总存储空间: $(df -h --total | grep total | awk '{print $2}')"
-          echo "📊 已用空间: $(df -h --total | grep total | awk '{print $3}')"
-          echo "📊 可用空间: $(df -h --total | grep total | awk '{print $4}')"
-          echo "========================================="
-
-      - name: GPU检测（ARM环境）
-        run: |
-          echo "========================================="
-          echo "          GPU 检测信息"
-          echo "========================================="
+          
+          echo "=== 内存 ==="
+          echo "总量: $(free -h | awk '/^Mem:/ {print $2}')"
+          echo "可用: $(free -h | awk '/^Mem:/ {print $7}')"
+          echo ""
+          
+          echo "=== 存储 ==="
+          df -h / | awk 'NR==2 {print "总量: " $2 "  已用: " $3 "  可用: " $4 "  使用率: " $5}'
+          echo ""
+          
+          echo "=== GPU ==="
           if command -v nvidia-smi &> /dev/null; then
-            echo "✅ 检测到 NVIDIA GPU:"
-            nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
-          elif command -v rocm-smi &> /dev/null; then
-            echo "✅ 检测到 AMD GPU:"
-            rocm-smi --showproductname --showmeminfo 2>/dev/null || echo "需要sudo权限查看详细信息"
-          elif [ -d /dev/dri ]; then
-            echo "✅ 检测到DRM设备（可能包含GPU）:"
-            ls -la /dev/dri/
-          elif [ -e /sys/class/gpu ]; then
-            echo "✅ 检测到GPU设备:"
-            ls -la /sys/class/gpu/
+            nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1 | awk '{print "型号: " $0}'
           else
-            echo "❌ 未检测到GPU硬件或驱动"
+            echo "未检测到 NVIDIA GPU"
           fi
-          echo "========================================="
-
-      - name: 网络IP地址
-        run: |
-          echo "========================================="
-          echo "          网络IP信息"
-          echo "========================================="
-          echo "📶 内网IP地址:"
-          ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v "127.0.0.1" | while read ip; do
-            echo "   • $ip"
-          done
           echo ""
-          echo "🌐 公网IP地址:"
-          PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me 2>/dev/null || curl -s --max-time 5 ipinfo.io/ip 2>/dev/null || echo "无法获取")
-          if [ "$PUBLIC_IP" != "无法获取" ] && [ -n "$PUBLIC_IP" ]; then
-            echo "   • $PUBLIC_IP"
-          else
-            echo "   • 未连接到公网或网络超时"
-          fi
-          echo "========================================="
-
-      - name: 操作系统信息
-        run: |
-          echo "========================================="
-          echo "         操作系统信息"
-          echo "========================================="
-          echo "📌 系统名称: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
-          echo "📌 系统版本: $(cat /etc/os-release | grep VERSION_ID | cut -d'"' -f2)"
-          echo "📌 内核版本: $(uname -r)"
-          echo "📌 主机名: $(hostname)"
-          echo "📌 运行时间: $(uptime -p | sed 's/up //')"
-          echo "📌 当前用户: $(whoami)"
-          echo "========================================="
-
-      - name: 系统信息完整汇总
-        run: |
-          echo "╔══════════════════════════════════════════════════════╗"
-          echo "║              系统配置信息完整汇总                   ║"
-          echo "╚══════════════════════════════════════════════════════╝"
-          echo ""
-          echo "🔹 硬件架构: $(uname -m)"
-          echo "🔹 CPU型号: $(lscpu | grep 'Model name' | awk -F: '{print $2}' | xargs)"
-          echo "🔹 CPU核心: $(nproc) 核心 / $(lscpu | grep 'Thread(s) per core' | awk -F: '{print $2}' | xargs) 线程"
-          echo "🔹 总内存: $(free -h | grep Mem | awk '{print $2}')"
-          echo "🔹 可用内存: $(free -h | grep Mem | awk '{print $7}')"
-          echo "🔹 磁盘容量: $(df -h --total | grep total | awk '{print $2}')"
-          echo "🔹 磁盘可用: $(df -h --total | grep total | awk '{print $4}')"
-          echo "🔹 操作系统: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
-          echo "🔹 内核版本: $(uname -r)"
-          echo "🔹 主机名: $(hostname)"
-          echo "🔹 内网IP: $(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -1 || echo '未配置')"
-          echo ""
-
-      - name: 检查系统负载
-        run: |
-          echo "========================================="
-          echo "          系统负载状态"
-          echo "========================================="
-          echo "📊 平均负载 (1/5/15分钟):"
-          uptime | awk -F'load average:' '{print $2}' | xargs
-          echo ""
-          echo "📊 进程状态:"
-          ps aux --no-headers | wc -l | xargs echo "总进程数:"
-          echo "📊 当前在线用户:"
-          who | wc -l | xargs echo "用户数:"
-          echo "========================================="
+          
+          echo "=== 网络 ==="
+          echo "IP 地址: $(hostname -I | awk '{print $1}')"
