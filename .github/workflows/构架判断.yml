@@ -8,5 +8,70 @@ jobs:
   check-arch:
     runs-on: ubuntu-24.04-arm
     steps:
-      - name: Check container architecture
+      - name: 检查系统架构
         run: uname -m
+
+      - name: 检查CPU信息
+        run: |
+          echo "=== CPU型号 ==="
+          lscpu | grep "Model name" || cat /proc/cpuinfo | grep "model name" | head -1
+          echo ""
+          echo "=== CPU核心数 ==="
+          nproc
+          echo ""
+          echo "=== CPU线程数 ==="
+          lscpu | grep "Thread(s) per core" || echo "无法获取线程数"
+
+      - name: 检查内存大小
+        run: |
+          echo "=== 总内存 ==="
+          free -h | grep Mem | awk '{print $2}'
+          echo ""
+          echo "=== 详细内存信息 ==="
+          cat /proc/meminfo | grep -E "^(MemTotal|MemFree|MemAvailable|SwapTotal|SwapFree)"
+
+      - name: 检查存储大小
+        run: |
+          echo "=== 磁盘使用情况 ==="
+          df -h --total | grep -E "(Filesystem|total)"
+          echo ""
+          echo "=== 磁盘分区详情 ==="
+          lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE
+
+      - name: 检查GPU信息（如果有）
+        run: |
+          if command -v nvidia-smi &> /dev/null; then
+            echo "=== NVIDIA GPU信息 ==="
+            nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+          elif command -v rocm-smi &> /dev/null; then
+            echo "=== AMD GPU信息 ==="
+            rocm-smi --showproductname --showmeminfo
+          else
+            echo "未检测到GPU或GPU驱动未安装"
+          fi
+
+      - name: 检查网络IP地址
+        run: |
+          echo "=== 所有网络接口IP ==="
+          ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v "127.0.0.1" || echo "无外部IP"
+          echo ""
+          echo "=== 公网IP（如果可访问） ==="
+          curl -s --max-time 5 ifconfig.me || echo "无法获取公网IP"
+
+      - name: 检查操作系统版本
+        run: |
+          echo "=== 操作系统 ==="
+          cat /etc/os-release | grep -E "^(PRETTY_NAME|VERSION_ID|VERSION)"
+
+      - name: 显示所有系统信息摘要
+        run: |
+          echo "=========================================="
+          echo "           系统信息汇总"
+          echo "=========================================="
+          echo "架构: $(uname -m)"
+          echo "CPU核心数: $(nproc)"
+          echo "总内存: $(free -h | grep Mem | awk '{print $2}')"
+          echo "系统: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
+          echo "主机名: $(hostname)"
+          echo "内核版本: $(uname -r)"
+          echo "=========================================="
