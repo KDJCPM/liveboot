@@ -1,77 +1,83 @@
-name: Extract and Convert Btrfs to Ext4
+name: Build SteamOS for sheng (Steam Frame base)
 
+# 用 Steam Frame 官方镜像作底包，把 Frame 的 rootfs 原样铺进一个 ext4 镜像，
+# 直接上传 rootfs.img 作为工作流产物。不做任何注入/裁剪/改写，保证内容与原镜像一致。
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
+    inputs:
+      frame_image_url:
+        description: '底包地址（Steam Frame 官方恢复镜像，公开可直连）'
+        required: true
+        type: string
+        default: 'https://steamdeck-images.steamos.cloud/recovery/steamframe-repair-latest.img.bz2'
+      rootfs_size:
+        description: 'rootfs.img 初始大小（下限；脚本会按底包实际用量自动放大）'
+        required: false
+        type: string
+        default: '14G'
+      upload_artifacts:
+        description: '上传 rootfs.img（关掉只做构建校验，不产出可下载产物）'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-
+  assemble:
+    name: Assemble SteamOS-for-sheng RootFS (raw Frame userspace)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    env:
+      WORK: /mnt/frame-work
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Install dependencies
+      - name: Free disk space (Frame 底包 + 目标镜像要同时存在)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget unzip btrfs-progs e2fsprogs util-linux
+          df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost \
+                      "$AGENT_TOOLSDIRECTORY/CodeQL" 2>/dev/null || true
+          sudo apt-get clean 2>/dev/null || true
+          df -h / | tail -1
 
-      - name: Download image
+      - name: Install Host Tools
         run: |
-          wget -O image.zip \
-            "https://steamdeck-images.steamos.cloud/recovery/steamframe-oobe-repair-20260922.5153644-0.3.0.img.zip"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl bzip2 zstd xz-utils e2fsprogs rsync util-linux btrfs-progs
 
-      - name: Unzip to get lun0.img
+      - name: Fetch Frame base (download → bz2 → GPT p2 切出 rootfs 分区)
         run: |
-          unzip -o image.zip
-          rm -f image.zip
-          ls -lh
+          chmod +x scripts/host/00-fetch-frame-rootfs.sh
+          sudo env FRAME_IMAGE_URL="${{ inputs.frame_image_url }}" WORK="$WORK" OUT="$WORK/out" \
+            bash scripts/host/00-fetch-frame-rootfs.sh
 
-      - name: Extract rootfs-A.img with dd
+      - name: Lay Frame userspace into our ext4 image
         run: |
-          dd if=lun0.img of=rootfs-A.img bs=512 skip=655394 count=10485760 status=progress
-          rm -f lun0.img
-          ls -lh
+          chmod +x scripts/host/01-lay-rootfs.sh
+          sudo bash scripts/host/01-lay-rootfs.sh "$WORK/out/rootfs.frame" rootfs.img "${{ inputs.rootfs_size }}"
 
-      - name: Convert Btrfs to Ext4
+      - name: Summary
+        if: always()
         run: |
-          # 先确认 rootfs-A.img 里是否直接是 btrfs 文件系统
-          file rootfs-A.img || true
+          {
+            echo "## SteamOS for sheng 构建结果（原样铺盘，无注入）"
+            echo ""
+            echo "| 项 | 值 |"
+            echo "|---|---|"
+            echo "| 底包 | Steam Frame 官方镜像 |"
+            echo "| rootfs.img | $(du -h rootfs.img 2>/dev/null | cut -f1 || echo N/A) |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          # 如果 rootfs-A.img 是裸 btrfs 文件系统（无分区表），直接挂载
-          sudo mkdir -p /mnt/btrfs
-          sudo mount -o loop,ro rootfs-A.img /mnt/btrfs || {
-            echo "直接挂载失败，可能内部还有分区表，需要先 losetup -P 找分区"
-            sudo losetup -Pf --show rootfs-A.img
-            lsblk
-            exit 1
-          }
-
-          # 创建 ext4 镜像文件，大小按源数据量估算（这里给 8G，可按需调整）
-          sudo dd if=/dev/zero of=rootfs-A-ext4.img bs=1M count=8192 status=progress
-          sudo mkfs.ext4 -F rootfs-A-ext4.img
-
-          sudo mkdir -p /mnt/ext4
-          sudo mount -o loop rootfs-A-ext4.img /mnt/ext4
-
-          # 用 rsync 保留权限、符号链接、xattr 等
-          sudo rsync -aAXH --info=progress2 /mnt/btrfs/ /mnt/ext4/
-
-          sudo umount /mnt/ext4
-          sudo umount /mnt/btrfs
-
-      - name: Compress output
-        run: |
-          # 压缩成 zip 或 zstd，按需选择
-          zip -9 rootfs-A-ext4.img.zip rootfs-A-ext4.img
-          # 或： zstd -T0 -19 rootfs-A-ext4.img -o rootfs-A-ext4.img.zst
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload RootFS Image
+        if: inputs.upload_artifacts
+        uses: actions/upload-artifact@v7
         with:
-          name: rootfs-A-ext4
-          path: rootfs-A-ext4.img.zip
-          retention-days: 7
+          name: steamos-sheng-rootfs
+          path: rootfs.img
+          retention-days: 14
+          compression-level: 1
+          if-no-files-found: error
