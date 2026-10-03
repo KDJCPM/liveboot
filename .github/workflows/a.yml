@@ -1,7 +1,7 @@
 name: Build SteamOS for sheng (Steam Frame base)
 
 # 用 Steam Frame 官方镜像作底包，把 Frame 的 rootfs 原样铺进一个 ext4 镜像，
-# 直接上传 rootfs.img 作为工作流产物。不做任何注入/裁剪/改写，保证内容与原镜像一致。
+# 可选：直接产出 rootfs.img，或挂载后打成 rootfs.tar，再按需 zip/gzip 打包。
 on:
   workflow_dispatch:
     inputs:
@@ -15,14 +15,36 @@ on:
         required: false
         type: string
         default: '14G'
+      rootfs_format:
+        description: 'rootfs 产出格式'
+        required: true
+        type: choice
+        options:
+          - img
+          - tar
+        default: 'img'
+      package_format:
+        description: '打包方式'
+        required: true
+        type: choice
+        options:
+          - zip
+          - gzip
+        default: 'zip'
+      compress_level:
+        description: '压缩等级 0~9（仅 gzip 生效）'
+        required: true
+        type: choice
+        options: ['0','1','2','3','4','5','6','7','8','9']
+        default: '9'
       upload_artifacts:
-        description: '上传 rootfs.img（关掉只做构建校验，不产出可下载产物）'
+        description: '上传产物（关掉只做构建校验，不产出可下载产物）'
         required: false
         type: boolean
         default: true
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 jobs:
@@ -47,7 +69,7 @@ jobs:
       - name: Install Host Tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq curl bzip2 zstd xz-utils e2fsprogs rsync util-linux btrfs-progs
+          sudo apt-get install -y -qq curl bzip2 zstd xz-utils e2fsprogs rsync util-linux btrfs-progs zip pigz
 
       - name: Fetch Frame base (download → bz2 → GPT p2 切出 rootfs 分区)
         run: |
@@ -60,6 +82,68 @@ jobs:
           chmod +x scripts/host/01-lay-rootfs.sh
           sudo bash scripts/host/01-lay-rootfs.sh "$WORK/out/rootfs.frame" rootfs.img "${{ inputs.rootfs_size }}"
 
+      # ---- 格式转换：img → tar（可选） ----
+      - name: Convert rootfs.img → rootfs.tar (可选)
+        if: inputs.rootfs_format == 'tar'
+        run: |
+          set -euo pipefail
+          MNT=/mnt/rootfs-tar
+          sudo mkdir -p "$MNT"
+          sudo mount -o loop,ro rootfs.img "$MNT"
+          # 在挂载目录内直接打 tar，保留权限/属主
+          sudo tar -cvf rootfs.tar -C "$MNT" .
+          sudo umount "$MNT"
+          ls -lh rootfs.tar
+
+      # ---- 打包：zip / gzip ----
+      - name: Package artifact (zip / gzip)
+        id: pack
+        run: |
+          set -euo pipefail
+          FMT="${{ inputs.rootfs_format }}"
+          PKG="${{ inputs.package_format }}"
+          LVL="${{ inputs.compress_level }}"
+
+          # 源文件名
+          if [[ "$FMT" == "tar" ]]; then
+            SRC=rootfs.tar
+          else
+            SRC=rootfs.img
+          fi
+          [[ -f "$SRC" ]] || { echo "找不到 $SRC"; exit 1; }
+
+          if [[ "$PKG" == "zip" ]]; then
+            # zip 默认压缩（不做等级控制）
+            zip -q -r "rootfs-${FMT}.zip" "$SRC"
+            OUT="rootfs-${FMT}.zip"
+          else
+            # gzip：pigz 多线程，最高线程，指定等级
+            THREADS="$(nproc)"
+            echo "pigz 线程数: $THREADS, 等级: $LVL"
+            pigz -p "$THREADS" "-$LVL" -k -f "$SRC"        # 生成 ${SRC}.gz
+            mv "${SRC}.gz" "rootfs-${FMT}.tar.gz" 2>/dev/null || true
+            OUT="rootfs-${FMT}.tar.gz"
+            # img 直接 gzip 时其实是 rootfs.img.gz，统一命名
+            if [[ "$FMT" == "img" ]]; then
+              mv "$OUT" "rootfs.img.gz" 2>/dev/null || true
+              OUT="rootfs.img.gz"
+            fi
+          fi
+
+          [[ -f "$OUT" ]] || { echo "打包失败，未找到 $OUT"; exit 1; }
+          SIZE_BYTES=$(stat -c %s "$OUT")
+          SIZE_MB=$(( SIZE_BYTES / 1048576 ))
+          echo "产物: $OUT ($SIZE_MB MiB)"
+          echo "out_file=$OUT"       >> "$GITHUB_OUTPUT"
+          echo "size_bytes=$SIZE_BYTES" >> "$GITHUB_OUTPUT"
+          echo "size_mb=$SIZE_MB"    >> "$GITHUB_OUTPUT"
+          # 2GB = 2 * 1024^3 bytes
+          if [[ "$SIZE_BYTES" -le 2147483648 ]]; then
+            echo "small=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "small=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Summary
         if: always()
         run: |
@@ -69,15 +153,31 @@ jobs:
             echo "| 项 | 值 |"
             echo "|---|---|"
             echo "| 底包 | Steam Frame 官方镜像 |"
-            echo "| rootfs.img | $(du -h rootfs.img 2>/dev/null | cut -f1 || echo N/A) |"
+            echo "| rootfs 格式 | ${{ inputs.rootfs_format }} |"
+            echo "| 打包方式 | ${{ inputs.package_format }} |"
+            echo "| 压缩等级 | ${{ inputs.compress_level }}（仅 gzip 生效） |"
+            echo "| 产物 | ${{ steps.pack.outputs.out_file || 'N/A' }} |"
+            echo "| 产物大小 | ${{ steps.pack.outputs.size_mb || 'N/A' }} MiB |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload RootFS Image
+      # ---- 上传：直接传产出文件，不让 upload-artifact 再打包 ----
+      - name: Upload artifact (直接上传产出文件)
         if: inputs.upload_artifacts
         uses: actions/upload-artifact@v7
         with:
           name: steamos-sheng-rootfs
-          path: rootfs.img
+          path: ${{ steps.pack.outputs.out_file }}
           retention-days: 14
-          compression-level: 1
+          compression-level: 0      # 已压缩，禁止再次打包
           if-no-files-found: error
+
+      # ---- ≤2GB 时同时发布 Release ----
+      - name: Publish Release (仅 ≤2GB)
+        if: inputs.upload_artifacts && steps.pack.outputs.small == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: rootfs-${{ github.run_number }}
+          name: SteamOS-for-sheng rootfs #${{ github.run_number }}
+          files: ${{ steps.pack.outputs.out_file }}
+          draft: false
+          prerelease: false
