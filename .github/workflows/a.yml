@@ -128,7 +128,7 @@ jobs:
               set -e
               cd /tmp
               wget -O install-anland-kde.sh \
-                https://github.com/Goldzxcbug/Droidspaces-rootfs-Desktop-builder/releases/download/anland-kde-packages/install-anland-kde.sh
+                https://raw.githubusercontent.com/KDJCPM/liveboot/refs/heads/master/scripts/host/anland-install.sh
               bash install-anland-kde.sh -1
             '
           fi
