@@ -2,6 +2,7 @@ name: Build SteamOS for sheng (Steam Frame base)
 
 # 用 Steam Frame 官方镜像作底包，把 Frame 的 rootfs 原样铺进一个 ext4 镜像，
 # 可选：直接产出 rootfs.img，或挂载后打成 rootfs.tar，再按需 zip/gzip 打包。
+# 可选：GUI 支持 —— 原镜像 / 卸载GUI / 安装anland补丁。
 on:
   workflow_dispatch:
     inputs:
@@ -23,6 +24,15 @@ on:
           - img
           - tar
         default: 'img'
+      gui_support:
+        description: 'GUI 支持'
+        required: true
+        type: choice
+        options:
+          - 原镜像
+          - 卸载GUI
+          - 安装anland补丁
+        default: '原镜像'
       package_format:
         description: '打包方式'
         required: true
@@ -82,7 +92,57 @@ jobs:
           chmod +x scripts/host/01-lay-rootfs.sh
           sudo bash scripts/host/01-lay-rootfs.sh "$WORK/out/rootfs.frame" rootfs.img "${{ inputs.rootfs_size }}"
 
-      # ---- 格式转换：img → tar（可选） ----
+      # ---- GUI 操作：卸载GUI / 安装anland补丁（img 和 tar 模式都先挂载进 chroot） ----
+      - name: Apply GUI support (chroot)
+        if: inputs.gui_support != '原镜像'
+        run: |
+          set -euo pipefail
+          MNT=/mnt/rootfs-gui
+          sudo mkdir -p "$MNT"
+          sudo mount -o loop,rw rootfs.img "$MNT"
+
+          # 绑定必要目录，保证 chroot 内 pacman 正常工作
+          for d in dev dev/pts proc sys run; do
+            sudo mkdir -p "$MNT/$d"
+            sudo mount --bind "/$d" "$MNT/$d"
+          done
+          # 拷贝 resolv.conf 供网络使用（anland 需要 wget）
+          sudo cp -f /etc/resolv.conf "$MNT/etc/resolv.conf" 2>/dev/null || true
+
+          # 在 chroot 内执行 pacman 卸载
+          sudo chroot "$MNT" /bin/bash -c '
+            set -e
+            pacman -Rns --noconfirm plasma-desktop plasma-workspace systemsettings \
+                kwin sddm discover dolphin konsole kmenuedit \
+                plasma-activities plasma-wayland-protocols kwayland \
+                layer-shell-qt kdecoration libkscreen \
+                xdg-desktop-portal-kde polkit-kde-agent signon-kwallet-extension \
+                kde-cli-tools kdesu kdialog \
+                steamdeck-kde-presets \
+                deckard-steamvr-session libplasma plasma-pa
+          ' || true
+
+          # 若选择“安装anland补丁”，继续在 chroot 内下载并执行安装脚本
+          if [[ "${{ inputs.gui_support }}" == "安装anland补丁" ]]; then
+            sudo chroot "$MNT" /bin/bash -c '
+              set -e
+              cd /tmp
+              wget -O install-anland-kde.sh \
+                https://github.com/Goldzxcbug/Droidspaces-rootfs-Desktop-builder/releases/download/anland-kde-packages/install-anland-kde.sh
+              bash install-anland-kde.sh -1
+            '
+          fi
+
+          # 解除绑定与挂载
+          for d in run sys proc dev/pts dev; do
+            sudo umount -lf "$MNT/$d" 2>/dev/null || true
+          done
+          sudo umount -lf "$MNT" 2>/dev/null || true
+          echo "GUI 操作完成: ${{ inputs.gui_support }}"
+
+      # ---- 格式转换：img → tar ----
+      # 原镜像: 直接挂载打 tar
+      # 卸载GUI/安装anland补丁: 已在上面 chroot 中处理完，这里只挂载打 tar
       - name: Convert rootfs.img → rootfs.tar (可选)
         if: inputs.rootfs_format == 'tar'
         run: |
@@ -148,12 +208,13 @@ jobs:
         if: always()
         run: |
           {
-            echo "## SteamOS for sheng 构建结果（原样铺盘，无注入）"
+            echo "## SteamOS for sheng 构建结果"
             echo ""
             echo "| 项 | 值 |"
             echo "|---|---|"
             echo "| 底包 | Steam Frame 官方镜像 |"
             echo "| rootfs 格式 | ${{ inputs.rootfs_format }} |"
+            echo "| GUI 支持 | ${{ inputs.gui_support }} |"
             echo "| 打包方式 | ${{ inputs.package_format }} |"
             echo "| 压缩等级 | ${{ inputs.compress_level }}（仅 gzip 生效） |"
             echo "| 产物 | ${{ steps.pack.outputs.out_file || 'N/A' }} |"
