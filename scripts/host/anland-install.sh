@@ -137,6 +137,7 @@ detect_target() {
             ARCHIVE_PREFIX="anland-kde-arch-kwin-"
             ARCHIVE_SUFFIX="-aarch64.tar.gz"
             ARCHIVE_TARGET="arch"
+            pacman -Sy
             ;;
         *)
             [[ -n "$version_id" ]] || die "/etc/os-release 缺少 VERSION_ID。" "/etc/os-release does not contain VERSION_ID."
