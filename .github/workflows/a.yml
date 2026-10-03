@@ -119,7 +119,8 @@ jobs:
                 xdg-desktop-portal-kde polkit-kde-agent signon-kwallet-extension \
                 kde-cli-tools kdesu kdialog \
                 steamdeck-kde-presets \
-                deckard-steamvr-session libplasma plasma-pa
+                deckard-steamvr-session libplasma plasma-pa && \
+                pacman -S libgcc libstdc++ aurorae knighttime
           ' || true
 
           # 若选择“安装anland补丁”，继续在 chroot 内下载并执行安装脚本
