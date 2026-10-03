@@ -1,0 +1,74 @@
+name: Extract and Convert Btrfs to Ext4
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip btrfs-progs e2fsprogs util-linux
+
+      - name: Download image
+        run: |
+          wget -O image.zip \
+            "https://steamdeck-images.steamos.cloud/recovery/steamframe-oobe-repair-20260922.5153644-0.3.0.img.zip"
+
+      - name: Unzip to get lun0.img
+        run: |
+          unzip -o image.zip
+          ls -lh
+
+      - name: Extract rootfs-A.img with dd
+        run: |
+          dd if=lun0.img of=rootfs-A.img bs=512 skip=655394 count=10485760 status=progress
+
+      - name: Convert Btrfs to Ext4
+        run: |
+          # 先确认 rootfs-A.img 里是否直接是 btrfs 文件系统
+          file rootfs-A.img || true
+
+          # 如果 rootfs-A.img 是裸 btrfs 文件系统（无分区表），直接挂载
+          sudo mkdir -p /mnt/btrfs
+          sudo mount -o loop,ro rootfs-A.img /mnt/btrfs || {
+            echo "直接挂载失败，可能内部还有分区表，需要先 losetup -P 找分区"
+            sudo losetup -Pf --show rootfs-A.img
+            lsblk
+            exit 1
+          }
+
+          # 创建 ext4 镜像文件，大小按源数据量估算（这里给 8G，可按需调整）
+          sudo dd if=/dev/zero of=rootfs-A-ext4.img bs=1M count=8192 status=progress
+          sudo mkfs.ext4 -F rootfs-A-ext4.img
+
+          sudo mkdir -p /mnt/ext4
+          sudo mount -o loop rootfs-A-ext4.img /mnt/ext4
+
+          # 用 rsync 保留权限、符号链接、xattr 等
+          sudo rsync -aAXH --info=progress2 /mnt/btrfs/ /mnt/ext4/
+
+          sudo umount /mnt/ext4
+          sudo umount /mnt/btrfs
+
+      - name: Compress output
+        run: |
+          # 压缩成 zip 或 zstd，按需选择
+          zip -9 rootfs-A-ext4.img.zip rootfs-A-ext4.img
+          # 或： zstd -T0 -19 rootfs-A-ext4.img -o rootfs-A-ext4.img.zst
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rootfs-A-ext4
+          path: rootfs-A-ext4.img.zip
+          retention-days: 7
