@@ -137,21 +137,19 @@ detect_target() {
             ARCHIVE_PREFIX="anland-kde-arch-kwin-"
             ARCHIVE_SUFFIX="-aarch64.tar.gz"
             ARCHIVE_TARGET="arch"
-            pacman -Sy
-            wget http://mirror.archlinuxarm.org/aarch64/core/libgcc-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz
-pacman -U libgcc-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz
-rm libgcc-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz
-wget http://mirror.archlinuxarm.org/aarch64/core/libstdc++-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz
-pacman -U libstdc++-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz
-rm libstdc++-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz
-wget http://mirror.archlinuxarm.org/aarch64/extra/aurorae-6.7.5-1-aarch64.pkg.tar.xz
-pacman -U aurorae-6.7.5-1-aarch64.pkg.tar.xz
-rm aurorae-6.7.5-1-aarch64.pkg.tar.xz
-wget http://mirror.archlinuxarm.org/aarch64/extra/knighttime-6.7.5-1-aarch64.pkg.tar.xz
-pacman -U knighttime-6.7.5-1-aarch64.pkg.tar.xz
-rm knighttime-6.7.5-1-aarch64.pkg.tar.xz
-
-            ;;
+            pacman -Syyuu
+            wget   http://mirror.archlinuxarm.org/aarch64/core/libgcc-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz   http://mirror.archlinuxarm.org/aarch64/core/libstdc++-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz   http://mirror.archlinuxarm.org/aarch64/extra/aurorae-6.7.5-1-aarch64.pkg.tar.xz   http://mirror.archlinuxarm.org/aarch64/extra/knighttime-6.7.5-1-aarch64.pkg.tar.xz
+            pacman -U --overwrite '/usr/lib/libgcc_s.so*' \
+             --overwrite '/usr/lib/libstdc++.so*' \
+             --overwrite '/usr/share/locale/*/LC_MESSAGES/libstdc++.mo' \
+             --overwrite '/usr/lib/qt6/qml/org/kde/kwin/*' \
+             --overwrite '/usr/share/kwin/*' \
+             --overwrite '/usr/share/knsrcfiles/aurorae.knsrc' \
+             libgcc-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz \
+             libstdc++-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz \
+             aurorae-6.7.5-1-aarch64.pkg.tar.xz \
+             knighttime-6.7.5-1-aarch64.pkg.tar.xz
+             ;;
         *)
             [[ -n "$version_id" ]] || die "/etc/os-release 缺少 VERSION_ID。" "/etc/os-release does not contain VERSION_ID."
             case "$distro_id:$version_id" in
