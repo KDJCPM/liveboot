@@ -145,10 +145,7 @@ detect_target() {
              --overwrite '/usr/lib/qt6/qml/org/kde/kwin/*' \
              --overwrite '/usr/share/kwin/*' \
              --overwrite '/usr/share/knsrcfiles/aurorae.knsrc' \
-             libgcc-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz \
-             libstdc++-16.1.1+r12+g301eb08fa2c5-1-aarch64.pkg.tar.xz \
-             aurorae-6.7.5-1-aarch64.pkg.tar.xz \
-             knighttime-6.7.5-1-aarch64.pkg.tar.xz
+             *.xz
              ;;
         *)
             [[ -n "$version_id" ]] || die "/etc/os-release 缺少 VERSION_ID。" "/etc/os-release does not contain VERSION_ID."
