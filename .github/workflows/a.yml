@@ -152,6 +152,7 @@ jobs:
           sudo mount -o loop,ro rootfs.img "$MNT"
           # 在挂载目录内直接打 tar，保留权限/属主
           sudo tar -cvf rootfs.tar -C "$MNT" .
+          ls "$MNT"
           sudo umount "$MNT"
           ls -lh rootfs.tar
 
